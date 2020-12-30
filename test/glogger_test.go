@@ -1,8 +1,9 @@
 package test
 
 import (
-	"glogger"
 	"testing"
+
+	"github.com/MSLibs/glogger"
 )
 
 func TestGLogger(t *testing.T) {

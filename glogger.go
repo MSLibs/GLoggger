@@ -3,9 +3,10 @@ package glogger
 import (
 	"context"
 	"fmt"
-	"glogger/core/encoder"
 	"strconv"
 	"time"
+
+	"github.com/MSLibs/glogger/core/encoder"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

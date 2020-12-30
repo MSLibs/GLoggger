@@ -1,4 +1,4 @@
-module glogger
+module github.com/MSLibs/glogger
 
 go 1.15
 
