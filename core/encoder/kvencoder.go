@@ -282,7 +282,6 @@ func (enc *kvEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*b
 		final.addElementSeparator()
 	}
 	addFields(final, final, fields)
-	final.addElementSeparator()
 	if ent.Stack != "" && final.StacktraceKey != "" {
 		final.AddString(final.StacktraceKey, ent.Stack)
 	}
@@ -307,7 +306,7 @@ func (enc *kvEncoder) addElementSeparator() {
 }
 
 func (enc *kvEncoder) appendStringSpecial(val string) {
-	enc.addKey(val)
+	enc.buf.AppendString(val)
 }
 
 func (enc *kvEncoder) appendFloat(val float64, bitSize int) {
