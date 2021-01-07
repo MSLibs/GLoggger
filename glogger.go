@@ -138,6 +138,24 @@ func (log GLogger) defaultLogData() interface{} {
 	if ok {
 		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
 	}
+	//TODO：重复代码，用类来代替
+	requestID, userflag, platformID := "", "", ""
+	if s, ok := ctx.Value(RequestID).(string); ok {
+		requestID = s
+	}
+	if s, ok := ctx.Value(UserFlag).(string); ok {
+		userflag = s
+	}
+	if s, ok := ctx.Value(PlatformID).(string); ok {
+		platformID = s
+	}
+	if ok {
+		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
+	}
+	var size int64 = -1
+	if s, ok := ctx.Value(Size).(int64); ok {
+		size = s
+	}
 	args := struct {
 		RequestID  string
 		UserFlag   string
@@ -145,11 +163,11 @@ func (log GLogger) defaultLogData() interface{} {
 		Duration   string
 		Size       int64
 	}{
-		ctx.Value(RequestID).(string),
-		ctx.Value(UserFlag).(string),
-		ctx.Value(PlatformID).(string),
+		requestID,
+		userflag,
+		platformID,
 		duration,
-		ctx.Value(Size).(int64),
+		size,
 	}
 
 	return args
