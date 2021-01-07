@@ -10,7 +10,7 @@ func WithContext(ctx *context.Context) GLogger {
 	logger := zap.L()
 	return GLogger{
 		logger,
-		ctx,
 		logger.Sugar(),
+		ctx,
 	}
 }
