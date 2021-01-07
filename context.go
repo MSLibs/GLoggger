@@ -11,5 +11,6 @@ func WithContext(ctx *context.Context) GLogger {
 	return GLogger{
 		logger,
 		logger.Sugar(),
+		ctx,
 	}
 }

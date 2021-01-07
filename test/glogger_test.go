@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/MSLibs/glogger"
@@ -15,4 +16,10 @@ func TestGLogger(t *testing.T) {
 
 func TestGLoggerFormat(t *testing.T) {
 	glog.Infof("logging format...")
+}
+
+func TestGLoggerSetContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), "requestId", "jasiudhasuidhuaisdhuaisdhiuasdhui")
+	log := glog.SetContext(&ctx)
+	log.Infof("logging context...")
 }

@@ -26,8 +26,12 @@ const (
 )
 
 type GLogger struct {
-	log   *zap.Logger
-	sugar *zap.SugaredLogger
+	log     *zap.Logger
+	sugar   *zap.SugaredLogger
+	context *context.Context
+}
+
+type FormatTemplateWithor interface {
 }
 
 func Info(msg string, fields ...zap.Field) {
@@ -48,13 +52,18 @@ func (log GLogger) Info(msg string, fields ...zap.Field) {
 }
 
 func (log GLogger) appendFields(fields ...zap.Field) []zap.Field {
-	ctx := context.Background()
-	if nil == ctx {
-		return nil
+	if nil == log.context {
+		context := context.Background()
+		log.context = &context
 	}
-	fields2 := defaultFields(ctx)
+	fields2 := defaultFields(*log.context)
 	fields = append(fields, fields2...)
 	return fields
+}
+
+func (log GLogger) SetContext(ctx *context.Context) GLogger {
+	log.context = ctx
+	return log
 }
 
 func defaultFields(ctx context.Context) []zap.Field {
@@ -103,12 +112,23 @@ func (log GLogger) Debug(msg string, fields ...zap.Field) {
 }
 
 func (log GLogger) Infof(msg string, args ...interface{}) {
-	a := log.defaultLogData()
+	// a := log.defaultLogData()
+	a := log.buildFormatTemplateWithor()
 	if a != nil {
-		log.sugar.With(a).Infof(msg, args...)
+		// log.Withf(a).Infof(msg, args...)
+		log.sugar.With(a...).Infof(msg, args...)
 	} else {
 		log.sugar.Infof(msg, args...)
 	}
+}
+
+//TODO 待优化，既然格式一定，是不是可以暂时直接写死
+func (log GLogger) Withf(args []interface{}) *zap.SugaredLogger {
+	log.sugar.With(args...)
+	for _, v := range args {
+		log.sugar.With(v)
+	}
+	return log.sugar
 }
 func (log GLogger) Errorf(msg string, args ...interface{}) {
 	a := log.defaultLogData()
@@ -127,12 +147,51 @@ func (log GLogger) Warnf(msg string, args ...interface{}) {
 	}
 }
 
-func (log GLogger) defaultLogData() interface{} {
-	ctx := context.Background()
-	if nil == ctx {
-		return nil
+func (log GLogger) buildFormatTemplateWithor() []interface{} {
+	if log.context == nil {
+		context := context.Background()
+		log.context = &context
 	}
+	ctx := *log.context
+	start, ok := ctx.Value(Duration).(time.Time)
+	var duration = ""
+	if ok {
+		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
+	}
+	//TODO：重复代码，用类来代替
+	requestID, userflag, platformID := "", "", ""
+	if s, ok := ctx.Value(RequestID).(string); ok {
+		requestID = s
+	}
+	if s, ok := ctx.Value(UserFlag).(string); ok {
+		userflag = s
+	}
+	if s, ok := ctx.Value(PlatformID).(string); ok {
+		platformID = s
+	}
+	if ok {
+		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
+	}
+	var size int64 = -1
+	if s, ok := ctx.Value(Size).(int64); ok {
+		size = s
+	}
+	fields := []interface{}{
+		zap.String(RequestID, requestID),
+		zap.String(UserFlag, userflag),
+		zap.String(PlatformID, platformID),
+		zap.String(Duration, duration),
+		zap.Int64(Size, size),
+	}
+	return fields
+}
 
+func (log GLogger) defaultLogData() interface{} {
+	if log.context == nil {
+		context := context.Background()
+		log.context = &context
+	}
+	ctx := *log.context
 	start, ok := ctx.Value(Duration).(time.Time)
 	var duration = ""
 	if ok {

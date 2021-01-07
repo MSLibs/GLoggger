@@ -172,6 +172,7 @@ func (enc *kvEncoder) AppendReflected(val interface{}) error {
 
 func (enc *kvEncoder) AppendString(val string) {
 	enc.safeAddString(val)
+	enc.addElementSeparator()
 }
 
 func (enc *kvEncoder) AppendTime(val time.Time) {
@@ -235,11 +236,9 @@ func (enc *kvEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*b
 		if cur == final.buf.Len() {
 			final.AppendString(ent.Level.String())
 		}
-		final.addElementSeparator()
 	}
 	if final.TimeKey != "" {
 		final.AddTime(final.TimeKey, ent.Time)
-		final.addElementSeparator()
 	}
 	if ent.LoggerName != "" && final.NameKey != "" {
 		final.addKey(final.NameKey)
@@ -258,7 +257,6 @@ func (enc *kvEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*b
 			// keep output valid.
 			final.AppendString(ent.LoggerName)
 		}
-		final.addElementSeparator()
 	}
 	if ent.Caller.Defined && final.CallerKey != "" {
 		final.addKey(final.CallerKey)
@@ -269,23 +267,24 @@ func (enc *kvEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*b
 			// keep JSON valid.
 			final.AppendString(ent.Caller.String())
 		}
+	}
+	// 这段代码的作用是添加field的值
+	if enc.buf.Len() > 0 {
+		final.buf.Write(enc.buf.Bytes())
 		final.addElementSeparator()
 	}
+	// msg
 	if final.MessageKey != "" {
 		final.addKey(enc.MessageKey)
 		final.buf.AppendByte('"')
-		final.AppendString(ent.Message)
+		final.appendStringSpecial(ent.Message)
 		final.buf.AppendByte('"')
 		final.addElementSeparator()
-	}
-	if enc.buf.Len() > 0 {
-		final.buf.Write(enc.buf.Bytes())
 	}
 	addFields(final, final, fields)
 	final.addElementSeparator()
 	if ent.Stack != "" && final.StacktraceKey != "" {
 		final.AddString(final.StacktraceKey, ent.Stack)
-		final.addElementSeparator()
 	}
 	if final.LineEnding != "" {
 		final.buf.AppendString(final.LineEnding)
@@ -305,6 +304,10 @@ func (enc *kvEncoder) addKey(key string) {
 
 func (enc *kvEncoder) addElementSeparator() {
 	enc.buf.AppendByte('#')
+}
+
+func (enc *kvEncoder) appendStringSpecial(val string) {
+	enc.addKey(val)
 }
 
 func (enc *kvEncoder) appendFloat(val float64, bitSize int) {
