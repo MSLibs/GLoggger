@@ -26,31 +26,8 @@ const (
 )
 
 type GLogger struct {
-	log     *zap.Logger
-	context *context.Context
-	sugar   *zap.SugaredLogger
-}
-
-func (log GLogger) initDefaultFields() GLogger {
-	ctx := *log.context
-	d := ctx.Value(Duration)
-	r := ctx.Value(RequestID)
-	p := ctx.Value(PlatformID)
-	fmt.Print(d, r, p)
-	start, ok := ctx.Value(Duration).(time.Time)
-	var duration = ""
-	if ok {
-		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
-	}
-
-	log.log.With(
-		zap.String(RequestID, ctx.Value(RequestID).(string)),
-		zap.String(UserFlag, ctx.Value(UserFlag).(string)),
-		zap.String(PlatformID, ctx.Value(UserFlag).(string)),
-		zap.String(Duration, duration),
-		zap.Int64(Size, ctx.Value(Size).(int64)),
-	)
-	return log
+	log   *zap.Logger
+	sugar *zap.SugaredLogger
 }
 
 func Info(msg string, fields ...zap.Field) {
@@ -66,30 +43,48 @@ func Debug(msg string, fields ...zap.Field) {
 }
 
 func (log GLogger) Info(msg string, fields ...zap.Field) {
-	// log.initDefaultFields().log.Info(msg, fields...)
 	fields = log.appendFields(fields...)
 	log.log.Info(msg, fields...)
 }
 
 func (log GLogger) appendFields(fields ...zap.Field) []zap.Field {
-	if nil == log.context {
+	ctx := context.Background()
+	if nil == ctx {
 		return nil
 	}
-	ctx := *log.context
+	fields2 := defaultFields(ctx)
+	fields = append(fields, fields2...)
+	return fields
+}
+
+func defaultFields(ctx context.Context) []zap.Field {
 	start, ok := ctx.Value(Duration).(time.Time)
-	var duration = ""
+	var requestID, userflag, platformID, duration = "", "", "", ""
+	if s, ok := ctx.Value(RequestID).(string); ok {
+		requestID = s
+	}
+	if s, ok := ctx.Value(UserFlag).(string); ok {
+		userflag = s
+	}
+	if s, ok := ctx.Value(PlatformID).(string); ok {
+		platformID = s
+	}
 	if ok {
 		duration = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
 	}
-	fileds2 := []zapcore.Field{
-		zap.String(RequestID, ctx.Value(RequestID).(string)),
-		zap.String(UserFlag, ctx.Value(UserFlag).(string)),
-		zap.String(PlatformID, ctx.Value(PlatformID).(string)),
-		zap.String(Duration, duration),
-		zap.Int64(Size, ctx.Value(Size).(int64)),
+	var size int64 = -1
+	if s, ok := ctx.Value(Size).(int64); ok {
+		size = s
 	}
-	fields = append(fields, fileds2...)
-	return fields
+
+	fileds := []zapcore.Field{
+		zap.String(RequestID, requestID),
+		zap.String(UserFlag, userflag),
+		zap.String(PlatformID, platformID),
+		zap.String(Duration, duration),
+		zap.Int64(Size, size),
+	}
+	return fileds
 }
 
 func (log GLogger) With(fields ...zap.Field) GLogger {
@@ -133,10 +128,11 @@ func (log GLogger) Warnf(msg string, args ...interface{}) {
 }
 
 func (log GLogger) defaultLogData() interface{} {
-	if nil == log.context {
+	ctx := context.Background()
+	if nil == ctx {
 		return nil
 	}
-	ctx := *log.context
+
 	start, ok := ctx.Value(Duration).(time.Time)
 	var duration = ""
 	if ok {
@@ -163,7 +159,7 @@ var config zap.Config
 
 func CreateLog() GLogger {
 	initDefaultConfig()
-	logger, err := config.Build()
+	logger, err := config.Build(zap.AddCallerSkip(1))
 	if err != nil {
 		logger.Error("logger construction falied")
 		panic(err)
@@ -172,9 +168,8 @@ func CreateLog() GLogger {
 	defer logger.Sync()
 	logger.Info("logger construction succeeded")
 	return GLogger{
-		log:     logger,
-		context: nil,
-		sugar:   logger.Sugar(),
+		log:   logger,
+		sugar: logger.Sugar(),
 	}
 }
 
