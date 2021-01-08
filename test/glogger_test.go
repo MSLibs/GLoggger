@@ -7,7 +7,7 @@ import (
 	"github.com/MSLibs/glogger"
 )
 
-var glog = glogger.CreateLog()
+var glog = glogger.CreateLog(glogger.GLoggerConfig{})
 
 func TestGLogger(t *testing.T) {
 	glog.Info("logging success...")

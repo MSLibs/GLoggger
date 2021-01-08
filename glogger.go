@@ -14,7 +14,7 @@ import (
 
 var (
 	// std is the name of the standard logger in stdlib `log`
-	std = CreateLog()
+	std = CreateLog(GLoggerConfig{Level: 0, OutputPath: "./logs"})
 )
 
 const (
@@ -234,8 +234,8 @@ func (log GLogger) defaultLogData() interface{} {
 
 var config zap.Config
 
-func CreateLog() GLogger {
-	initDefaultConfig()
+func CreateLog(gconfig GLoggerConfig) GLogger {
+	initDefaultConfig(gconfig)
 	logger, err := config.Build(zap.AddCallerSkip(1))
 	if err != nil {
 		logger.Error("logger construction falied")
@@ -250,10 +250,17 @@ func CreateLog() GLogger {
 	}
 }
 
-func initDefaultConfig() {
+func initDefaultConfig(gconfig GLoggerConfig) {
 	registerEncoder()
+	level := gconfig.Level
+	outputs := []string{"stdout"}
+	if gconfig.OutputPath == "" {
+		gconfig.OutputPath = "./tmp/logs"
+	}
+	outputs = append(outputs, gconfig.OutputPath)
+
 	config = zap.Config{
-		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
+		Level:       zap.NewAtomicLevelAt(level),
 		Development: false,
 		Encoding:    "kvpare",
 		EncoderConfig: zapcore.EncoderConfig{
@@ -269,7 +276,7 @@ func initDefaultConfig() {
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		},
-		OutputPaths:      []string{"stdout", "./tmp/logs"},
+		OutputPaths:      outputs,
 		ErrorOutputPaths: []string{"stderr"},
 		// InitialFields: map[string]interface{}{
 		// 	"requestId":  "",
