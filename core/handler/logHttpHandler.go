@@ -7,34 +7,22 @@ import (
 	"time"
 
 	"github.com/MSLibs/glogger"
+	"github.com/MSLibs/glogger/utils"
 )
-
-type HttpRequestPayload struct {
-	method    string
-	url       string
-	ip        string
-	referer   string
-	userAgent string
-	size      int64
-	duration  int64
-}
 
 func LogRequestHandler(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		ri := &HttpRequestPayload{
-			method:    r.Method,
-			url:       r.URL.String(),
-			referer:   r.Header.Get("Referer"),
-			userAgent: r.Header.Get("User-Agent"),
+		ri := &glogger.LogPayload{
+			Method:    r.Method,
+			Url:       r.URL.String(),
+			Referer:   r.Header.Get("Referer"),
+			UserAgent: r.Header.Get("User-Agent"),
 		}
-		ri.ip = requestGetRemoteAddress(r)
+		ri.SourceIP = requestGetRemoteAddress(r)
 		// this runs handler h and captures information about
 		// HTTP request
 		// m := httpsnoop.CaptureMetrics()
-		ri.size = r.ContentLength
-		// ri.code = m.Code
-		// ri.size = m.Written
-		// ri.duration = m.Duration
+		ri.Size = r.ContentLength
 		ctx := initLogContext(r, ri)
 		// next
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -42,16 +30,21 @@ func LogRequestHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func initLogContext(r *http.Request, info *HttpRequestPayload) context.Context {
+func initLogContext(r *http.Request, info *glogger.LogPayload) context.Context {
 	start := time.Now()
 	ctx := r.Context()
-	ctx = context.WithValue(ctx, glogger.RequestID, r.Header.Get(glogger.RequestID))
-	ctx = context.WithValue(ctx, glogger.UserFlag, r.Header.Get(glogger.UserFlag))
-	ctx = context.WithValue(ctx, glogger.PlatformID, r.Header.Get(glogger.PlatformID))
-	ctx = context.WithValue(ctx, "referer", r.Header.Get(glogger.PlatformID))
-	ctx = context.WithValue(ctx, "userAgent", r.Header.Get(glogger.PlatformID))
-	ctx = context.WithValue(ctx, "size", info.size)
-	ctx = context.WithValue(ctx, "duration", start)
+	ctx = context.WithValue(ctx, glogger.RequestID, info.RequestID)
+	ctx = context.WithValue(ctx, glogger.UserFlag, info.UserFlag)
+	ctx = context.WithValue(ctx, glogger.PlatformID, info.PlatformID)
+	ctx = context.WithValue(ctx, glogger.Referer, info.Referer)
+	ctx = context.WithValue(ctx, glogger.UserAgent, info.UserAgent)
+	ctx = context.WithValue(ctx, glogger.Size, info.Size)
+	ctx = context.WithValue(ctx, glogger.Duration, start)
+	ctx = context.WithValue(ctx, glogger.Url, r.URL.String())
+	ctx = context.WithValue(ctx, glogger.SourceIP, requestGetRemoteAddress(r))
+	if serverip, err := utils.ExternalIP(); err == nil {
+		ctx = context.WithValue(ctx, glogger.ServerIP, serverip)
+	}
 	return ctx
 }
 
