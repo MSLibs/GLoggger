@@ -298,6 +298,7 @@ func (enc *kvEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*b
 
 func (enc *kvEncoder) addKey(key string) {
 	enc.buf.AppendString(key)
+	enc.buf.AppendByte('?')
 	enc.buf.AppendByte('=')
 }
 
